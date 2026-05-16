@@ -1,0 +1,12 @@
+serial:
+  port: "/dev/ttyUSB_easymeter"
+  baud_rate: 9600
+
+mqtt:
+  host: "localhost"
+  port: 1883
+  client_id: "sml2ha"
+  topic_prefix: "sml2ha"
+
+logging:
+  debug: true

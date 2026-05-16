@@ -1,0 +1,15 @@
+[package]
+name = "sml2ha"
+version = "0.9.0"
+edition = "2024"
+
+[dependencies]
+serialport = { version = "4.2.0", default-features = false }
+anyhow = "1.0"
+sml-rs = "0.4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+rumqttc = "0.24"
+chrono = "0.4"
+clap = { version = "4.4", features = ["derive"] }
