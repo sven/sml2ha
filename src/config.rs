@@ -26,6 +26,8 @@ pub struct MqttConfig {
     pub username: Option<String>,
     /// Optional password for MQTT authentication.
     pub password: Option<String>,
+    /// Optional send cycle duration in seconds.
+    pub send_cycle_sec: Option<u64>,
 }
 
 /// Configuration for logging and verbosity.
