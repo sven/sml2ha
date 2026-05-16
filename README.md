@@ -44,6 +44,7 @@ mqtt:
   port: 1883               # MQTT Broker port
   client_id: "sml2ha"      # Unique client ID
   topic_prefix: "sml2ha"   # Prefix for MQTT topics
+  send_cycle_sec: 5        # Optional: Update interval in seconds (default: as fast as possible)
 
 logging:
   debug: true              # Verbose console output is enabled

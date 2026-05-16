@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use clap::Parser;
+use std::time::Instant;
 
 mod config;
 mod ha;
@@ -46,6 +47,7 @@ fn main() -> Result<()> {
     println!("Starting SML telemetry loop. Press Ctrl+C to stop.");
     let mut registered = false;
     let mut last_alive_print = chrono::Local::now();
+    let mut last_send: Option<Instant> = None;
 
     loop {
         match sml.read_telemetry() {
@@ -64,54 +66,62 @@ fn main() -> Result<()> {
                     );
                 }
 
-                let ha_client = ha.as_mut().unwrap();
+                let should_send = match config.mqtt.send_cycle_sec {
+                    Some(cycle) => last_send.map_or(true, |last| last.elapsed().as_secs() >= cycle),
+                    None => true,
+                };
 
-                let results = vec![
-                    TelemetryResult {
-                        name: "Energy Import Total".to_string(),
-                        value: data.energy_import_total,
-                        unit: "kWh".to_string(),
-                        device_class: Some("energy".to_string()),
-                        state_class: Some("total_increasing".to_string()),
-                    },
-                    TelemetryResult {
-                        name: "Energy Export Total".to_string(),
-                        value: data.energy_export_total,
-                        unit: "kWh".to_string(),
-                        device_class: Some("energy".to_string()),
-                        state_class: Some("total_increasing".to_string()),
-                    },
-                    TelemetryResult {
-                        name: "Power Current Total".to_string(),
-                        value: data.power_total,
-                        unit: "W".to_string(),
-                        device_class: Some("power".to_string()),
-                        state_class: Some("measurement".to_string()),
-                    },
-                ];
+                if should_send {
+                    let ha_client = ha.as_mut().unwrap();
 
-                if !registered {
-                    println!("Registering sensors with Home Assistant...");
-                    if let Err(e) = ha_client.register_sensors(&results) {
-                        eprintln!("Failed to register sensors: {}", e);
-                    } else {
-                        registered = true;
+                    let results = vec![
+                        TelemetryResult {
+                            name: "Energy Import Total".to_string(),
+                            value: data.energy_import_total,
+                            unit: "kWh".to_string(),
+                            device_class: Some("energy".to_string()),
+                            state_class: Some("total_increasing".to_string()),
+                        },
+                        TelemetryResult {
+                            name: "Energy Export Total".to_string(),
+                            value: data.energy_export_total,
+                            unit: "kWh".to_string(),
+                            device_class: Some("energy".to_string()),
+                            state_class: Some("total_increasing".to_string()),
+                        },
+                        TelemetryResult {
+                            name: "Power Current Total".to_string(),
+                            value: data.power_total,
+                            unit: "W".to_string(),
+                            device_class: Some("power".to_string()),
+                            state_class: Some("measurement".to_string()),
+                        },
+                    ];
+
+                    if !registered {
+                        println!("Registering sensors with Home Assistant...");
+                        if let Err(e) = ha_client.register_sensors(&results) {
+                            eprintln!("Failed to register sensors: {}", e);
+                        } else {
+                            registered = true;
+                        }
                     }
-                }
 
-                if config.debug() {
-                    println!(
-                        "--- SML Telemetry ({}) ---",
-                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
-                    );
-                    for res in &results {
-                        println!("{:<20}: {:>10.2} {}", res.name, res.value, res.unit);
+                    if config.debug() {
+                        println!(
+                            "--- SML Telemetry ({}) ---",
+                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+                        );
+                        for res in &results {
+                            println!("{:<20}: {:>10.2} {}", res.name, res.value, res.unit);
+                        }
+                        println!("--------------------------\n");
                     }
-                    println!("--------------------------\n");
-                }
 
-                if let Err(e) = ha_client.publish_state(&results) {
-                    eprintln!("Failed to publish MQTT state: {}", e);
+                    if let Err(e) = ha_client.publish_state(&results) {
+                        eprintln!("Failed to publish MQTT state: {}", e);
+                    }
+                    last_send = Some(Instant::now());
                 }
             }
             Err(e) => {
@@ -126,7 +136,5 @@ fn main() -> Result<()> {
                 last_alive_print = now;
             }
         }
-
-        std::thread::sleep(std::time::Duration::from_secs(5));
     }
 }

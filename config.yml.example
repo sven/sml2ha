@@ -7,6 +7,9 @@ mqtt:
   port: 1883
   client_id: "sml2ha"
   topic_prefix: "sml2ha"
+  # Optional: Send telemetry to MQTT every X seconds
+  # If not set, sends as fast as new values are available
+  send_cycle_sec: 5
 
 logging:
   debug: true
